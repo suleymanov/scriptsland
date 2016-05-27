@@ -60,6 +60,16 @@ def write_fasta(fn, data):
         SeqIO.write(data, f, 'fasta')
 
 
+def write_file(fn, data):
+    with open(fn, 'w') as f:
+        f.write(data)
+
+
+def read_file(fn):
+    with open(fn) as f:
+        return f.read()
+
+
 def lcsubstr(str1, str2):
     """
     Returns longest common substring of two strings.

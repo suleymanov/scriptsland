@@ -1,7 +1,4 @@
-# import os
 import sys
-
-from itertools import izip
 
 from utils import *
 
@@ -98,12 +95,51 @@ def _final_set_improvement(args):
     assert len(assemblies) == len(set(assemblies))
 
 
+def _concatenate_scorer_results(args):
+    scores_pn = args[0]
+    out_fn = args[1]
+
+    scores = map(lambda x: SourceSet(get_short_fn(x), read_file(x)), find_all_fasta(scores_pn))
+    data = '\n'.join(map(lambda x: '\n'.join([x.source_name, x.components]), scores))
+    write_file(out_fn, data)
+
+
+def _create_report(args):
+    by_oligs_pn = args[0]
+    main_oligs_fn = args[1]
+    mutant_oligs_fn = args[2]
+    variants_fn = args[3]
+    data_pn = os.path.abspath(by_oligs_pn)
+
+    oligs_sets = map(lambda x: SourceSet(x, read_fasta(x)), find_all_fasta(by_oligs_pn))
+    main_oligs = map(get_rec_seq, read_fasta(main_oligs_fn))
+    mutant_oligs = map(get_rec_seq, read_fasta(mutant_oligs_fn))
+    variants = map(get_rec_seq, read_fasta(variants_fn))
+
+    oligs = main_oligs[::]
+    oligs.extend(mutant_oligs)
+    oligs_from_set = list(set(reduce(lambda res, item: res + map(get_rec_seq, item.components), oligs_sets, [])))
+    print 'Examining set in {}'.format(data_pn)
+    print 'Number of construction oligs: {} ({} main/{} mutant)'.format(len(oligs), len(main_oligs), len(mutant_oligs))
+    print 'Number of unique oligs in sets: {}'.format(len(oligs_from_set))
+    assemblies = map(lambda x: x[0], map(assemble_chain, map(lambda y: y.components, oligs_sets)))
+    print 'Number of variants: {}'.format(len(variants))
+    print 'Number of assemblies (validation): {}'.format(len(assemblies))
+    assert all(s in assemblies for s in variants)
+    assert all(s in variants for s in assemblies)
+    print '\n'
+
+
 def main(args):
     option = args[0]
     if option == '--examine_set':
         return _examine_oligs_set(args[1:])
     if option == '--improve':
         return _final_set_improvement(args[1:])
+    if option == '--concatenate':
+        return _concatenate_scorer_results(args[1:])
+    if option == '--createreport':
+        return _create_report(args[1:])
     raise KeyError('Unknown option')
 
 

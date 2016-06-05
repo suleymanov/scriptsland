@@ -1,6 +1,8 @@
 import os
 import sys
 
+from itertools import izip
+
 import numpy as np
 import pandas as pd
 
@@ -8,11 +10,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-read_fasta = lambda x: list(SeqIO.parse(x, 'fasta'))
-
-def _write_fasta(fn, records):
-	with open(fn, 'w') as f:
-		SeqIO.write(records, f, 'fasta')
+from utils import *
 
 
 def _check(args):
@@ -61,6 +59,34 @@ def _check2(args):
 		assert vh[i] in map(lambda x: x['sequence'], items)
 
 
+def _check_from_maestro(args):
+	excel_fn = args[0]
+	maestro_fn = args[1]
+
+	maestro_records = read_fasta(maestro_fn)
+	df = pd.read_excel(excel_fn, sheetname=0)
+	names = list(df.iloc[:, 0])
+	vl = list(df.iloc[:, 1])
+	vh = list(df.iloc[:, 2])
+
+	for i, name in enumerate(names):
+		num = name.split('-')[-1]
+		vh_name = 'prediction_{}_refined_H'.format(num)
+		vl_name = 'prediction_{}_refined_L'.format(num)
+		vh_rec = filter(lambda x: x.description == vh_name, maestro_records)
+		vl_rec = filter(lambda x: x.description == vl_name, maestro_records)
+		if not (len(vh_rec) == 1 and len(vl_rec) == 1):
+			print name
+			return
+		if not get_rec_seq(vh_rec[0]).replace('~', '') in vh[i]:
+			print name
+			return
+		if not get_rec_seq(vl_rec[0]).replace('~', '') in vl[i]:
+			print name
+			return
+	print 'All correct!'
+
+
 def _create_new(args):
 	excel_fn = args[0]
 	by_chain_pn = args[1]
@@ -89,6 +115,8 @@ def main(args):
 		return _check(args[1:])
 	if option == '--check2':
 		return _check2(args[1:])
+	if option == '--checkmaestro':
+		return _check_from_maestro(args[1:])
 	if option == '--createnew':
 		return _create_new(args[1:])
 	raise ValueError('Wrong option.')
